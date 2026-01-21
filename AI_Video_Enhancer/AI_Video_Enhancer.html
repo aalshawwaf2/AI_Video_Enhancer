@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUBG AI Video Enhancer Pro | أداة تحسين فيديوهات الألعاب</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FFmpeg for MP4 conversion -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/util.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Tajawal', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 20px rgba(0, 255, 204, 0.5), 0 0 40px rgba(0, 255, 204, 0.3);
+        }
+        
+        .glow-box {
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.2), inset 0 0 30px rgba(0, 255, 204, 0.05);
+        }
+        
+        .slider-container input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #1a1a2e, #00ffcc);
+            outline: none;
+        }
+        
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ffcc, #00aa88);
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.8);
+            transition: all 0.2s;
+        }
+        
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 25px rgba(0, 255, 204, 1);
+        }
+        
+        .video-container {
+            background: linear-gradient(145deg, #0d0d1a, #1a1a2e);
+            border: 2px solid rgba(0, 255, 204, 0.3);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00ffcc 0%, #00aa88 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 255, 204, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            background: linear-gradient(135deg, #333 0%, #222 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .upload-zone {
+            border: 3px dashed rgba(0, 255, 204, 0.4);
+            background: rgba(0, 255, 204, 0.03);
+            transition: all 0.3s;
+        }
+        
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #00ffcc;
+            background: rgba(0, 255, 204, 0.1);
+            box-shadow: 0 0 40px rgba(0, 255, 204, 0.2);
+        }
+        
+        .preset-btn {
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .preset-btn:hover, .preset-btn.active {
+            background: rgba(0, 255, 204, 0.3);
+            border-color: #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #00ffcc, #00ff88, #00ffcc);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .processing-indicator {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .stat-card {
+            background: linear-gradient(145deg, rgba(0, 255, 204, 0.1), rgba(0, 255, 204, 0.02));
+            border: 1px solid rgba(0, 255, 204, 0.2);
+        }
+
+        #enhancedVideo, #originalVideo {
+            max-height: 400px;
+            object-fit: contain;
+        }
+
+        .comparison-label {
+            position: absolute;
+            top: 10px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Header -->
+    <header class="py-6 px-4 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-500 flex items-center justify-center text-2xl font-black">
+                    AI
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black glow-text text-cyan-400">PUBG AI Enhancer Pro</h1>
+                    <p class="text-gray-400 text-sm">تقنية Smart HDR Rendering | إصدار 2.0</p>
+                </div>
+            </div>
+            <div class="hidden md:flex items-center gap-6 text-sm text-gray-400">
+                <span class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    الذكاء الاصطناعي نشط
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Upload Section -->
+        <div id="uploadSection" class="mb-8">
+            <div class="upload-zone rounded-2xl p-12 text-center cursor-pointer" id="dropZone">
+                <div class="mb-6">
+                    <svg class="w-20 h-20 mx-auto text-cyan-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <h3 class="text-2xl font-bold text-white mb-2">اسحب الفيديو هنا أو اضغط للاختيار</h3>
+                    <p class="text-gray-400">يدعم MP4, MOV, WEBM - حتى 500MB</p>
+                </div>
+                <input type="file" id="videoInput" accept="video/*" class="hidden">
+                <button onclick="document.getElementById('videoInput').click()" class="btn-primary px-8 py-3 rounded-xl font-bold text-black">
+                    اختر ملف الفيديو
+                </button>
+            </div>
+        </div>
+
+        <!-- Editor Section (Hidden by default) -->
+        <div id="editorSection" class="hidden">
+            <!-- Video Comparison -->
+            <div class="grid lg:grid-cols-2 gap-6 mb-8">
+                <!-- Original Video -->
+                <div class="video-container rounded-2xl p-4 relative">
+                    <div class="comparison-label right-4 bg-red-500/80 text-white">قبل التحسين</div>
+                    <video id="originalVideo" class="w-full rounded-xl" muted></video>
+                    <div class="mt-3 text-center text-gray-400 text-sm">
+                        <span id="originalInfo">-</span>
+                    </div>
+                </div>
+                
+                <!-- Enhanced Video Preview -->
+                <div class="video-container rounded-2xl p-4 glow-box relative">
+                    <div class="comparison-label right-4 bg-cyan-500/80 text-black font-bold">بعد التحسين AI</div>
+                    <canvas id="enhancedCanvas" class="w-full rounded-xl hidden"></canvas>
+                    <video id="enhancedVideo" class="w-full rounded-xl"></video>
+                    <div class="mt-3 text-center text-cyan-400 text-sm font-bold">
+                        <span id="enhancedInfo">معاينة مباشرة للتحسينات</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="bg-gray-900/50 rounded-2xl p-6 mb-8 border border-gray-800">
+                <!-- Video Controls -->
+                <div class="flex items-center justify-center gap-4 mb-6">
+                    <button id="playBtn" class="w-14 h-14 rounded-full bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center transition-all">
+                        <svg id="playIcon" class="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                    <input type="range" id="videoProgress" class="flex-1 max-w-md h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" value="0" min="0" max="100">
+                    <span id="videoTime" class="text-gray-400 text-sm w-24 text-center">0:00 / 0:00</span>
+                </div>
+
+                <!-- Presets -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span class="text-cyan-400">⚡</span> إعدادات مسبقة للألعاب
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button class="preset-btn rounded-xl p-4 text-center" onclick="applyPreset('pubg')">
+                            <div class="text-2xl mb-2">🎮</div>
+                            <div class="font-bold text-white">PUBG Pro</div>
+                            <div class="text-xs text-gray-400">ألوان مشبعة + حدة</div>
+                        </button>
+                        <button class="preset-btn rounded-xl p-4 text-center" onclick="applyPreset('cinematic')">
+                            <div class="text-2xl mb-2">🎬</div>
+                            <div class="font-bold text-white">سينمائي</div>
+                            <div class="text-xs text-gray-400">تباين عالي</div>
+                        </button>
+                        <button class="preset-btn rounded-xl p-4 text-center" onclick="applyPreset('vibrant')">
+                            <div class="text-2xl mb-2">🌈</div>
+                            <div class="font-bold text-white">ألوان حية</div>
+                            <div class="text-xs text-gray-400">تشبع قوي جداً</div>
+                        </button>
+                        <button class="preset-btn rounded-xl p-4 text-center" onclick="applyPreset('hdr')">
+                            <div class="text-2xl mb-2">✨</div>
+                            <div class="font-bold text-white">HDR+</div>
+                            <div class="text-xs text-gray-400">إضاءة ديناميكية</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manual Controls -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Saturation -->
+                    <div class="slider-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-bold text-white flex items-center gap-2">
+                                <span class="text-pink-400">🎨</span> التشبع اللوني
+                            </label>
+                            <span id="saturationValue" class="text-cyan-400 font-bold">140%</span>
+                        </div>
+                        <input type="range" id="saturation" min="50" max="200" value="140" oninput="updateFilters()">
+                    </div>
+                    
+                    <!-- Contrast -->
+                    <div class="slider-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-bold text-white flex items-center gap-2">
+                                <span class="text-yellow-400">◐</span> التباين
+                            </label>
+                            <span id="contrastValue" class="text-cyan-400 font-bold">115%</span>
+                        </div>
+                        <input type="range" id="contrast" min="50" max="200" value="115" oninput="updateFilters()">
+                    </div>
+                    
+                    <!-- Brightness -->
+                    <div class="slider-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-bold text-white flex items-center gap-2">
+                                <span class="text-orange-400">☀️</span> السطوع
+                            </label>
+                            <span id="brightnessValue" class="text-cyan-400 font-bold">105%</span>
+                        </div>
+                        <input type="range" id="brightness" min="50" max="150" value="105" oninput="updateFilters()">
+                    </div>
+                    
+                    <!-- Sharpness (Simulated) -->
+                    <div class="slider-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-bold text-white flex items-center gap-2">
+                                <span class="text-blue-400">🔍</span> الحدة
+                            </label>
+                            <span id="sharpnessValue" class="text-cyan-400 font-bold">30%</span>
+                        </div>
+                        <input type="range" id="sharpness" min="0" max="100" value="30" oninput="updateFilters()">
+                    </div>
+                </div>
+
+                <!-- Additional Filters Row -->
+                <div class="grid md:grid-cols-3 gap-6 mt-6">
+                    <!-- Warmth -->
+                    <div class="slider-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-bold text-white flex items-center gap-2">
+                                <span class="text-red-400">🔥</span> الدفء
+                            </label>
+                            <span id="warmthValue" class="text-cyan-400 font-bold">0</span>
+                        </div>
+                        <input type="range" id="warmth" min="-50" max="50" value="0" oninput="updateFilters()">
+                    </div>
+                    
+                    <!-- Vibrance -->
+                    <div class="slider-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-bold text-white flex items-center gap-2">
+                                <span class="text-purple-400">💜</span> الحيوية
+                            </label>
+                            <span id="vibranceValue" class="text-cyan-400 font-bold">20%</span>
+                        </div>
+                        <input type="range" id="vibrance" min="0" max="100" value="20" oninput="updateFilters()">
+                    </div>
+                    
+                    <!-- Shadows -->
+                    <div class="slider-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-bold text-white flex items-center gap-2">
+                                <span class="text-gray-400">🌑</span> الظلال
+                            </label>
+                            <span id="shadowsValue" class="text-cyan-400 font-bold">0</span>
+                        </div>
+                        <input type="range" id="shadows" min="-50" max="50" value="0" oninput="updateFilters()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Section -->
+            <div class="bg-gradient-to-r from-cyan-900/30 to-emerald-900/30 rounded-2xl p-6 border border-cyan-500/30">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-1">جاهز للتصدير؟</h3>
+                        <p class="text-gray-400">سيتم تصدير الفيديو بأعلى جودة متاحة</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="resetBtn" onclick="resetFilters()" class="px-6 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 font-bold transition-all">
+                            إعادة ضبط
+                        </button>
+                        <button id="exportBtn" onclick="exportVideo('mp4')" class="btn-primary px-8 py-3 rounded-xl font-bold text-black flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            تصدير MP4 (موصى به)
+                        </button>
+                        <button onclick="exportVideo('webm')" class="px-6 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 font-bold transition-all flex items-center gap-2">
+                            تصدير WebM (سريع)
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar (Hidden by default) -->
+                <div id="progressContainer" class="hidden mt-6">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-cyan-400 processing-indicator">جاري المعالجة بالذكاء الاصطناعي...</span>
+                        <span id="progressPercent" class="text-white font-bold">0%</span>
+                    </div>
+                    <div class="h-3 bg-gray-800 rounded-full overflow-hidden">
+                        <div id="progressBar" class="progress-bar h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Video Button -->
+            <div class="text-center mt-6">
+                <button onclick="loadNewVideo()" class="text-cyan-400 hover:text-cyan-300 underline">
+                    تحميل فيديو جديد
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
+            <div class="stat-card rounded-xl p-4 text-center">
+                <div class="text-3xl font-black text-cyan-400">8K</div>
+                <div class="text-gray-400 text-sm">دعم الجودة</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center">
+                <div class="text-3xl font-black text-cyan-400">AI</div>
+                <div class="text-gray-400 text-sm">معالجة ذكية</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center">
+                <div class="text-3xl font-black text-cyan-400">HDR</div>
+                <div class="text-gray-400 text-sm">ألوان ديناميكية</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center">
+                <div class="text-3xl font-black text-cyan-400">60fps</div>
+                <div class="text-gray-400 text-sm">سلاسة عالية</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 px-4 border-t border-gray-800 mt-12">
+        <div class="max-w-7xl mx-auto text-center text-gray-500 text-sm">
+            <p>Developed with AI Technology | PUBG AI Enhancer Pro v2.0</p>
+        </div>
+    </footer>
+
+    <script>
+        // Global Variables
+        let originalVideo = document.getElementById('originalVideo');
+        let enhancedVideo = document.getElementById('enhancedVideo');
+        let canvas = document.getElementById('enhancedCanvas');
+        let ctx = canvas.getContext('2d');
+        let isPlaying = false;
+        let animationId = null;
+
+        // Filter values
+        let filters = {
+            saturation: 140,
+            contrast: 115,
+            brightness: 105,
+            sharpness: 30,
+            warmth: 0,
+            vibrance: 20,
+            shadows: 0
+        };
+
+        // Presets
+        const presets = {
+            pubg: { saturation: 145, contrast: 120, brightness: 105, sharpness: 40, warmth: 5, vibrance: 25, shadows: -10 },
+            cinematic: { saturation: 120, contrast: 135, brightness: 95, sharpness: 25, warmth: 10, vibrance: 15, shadows: -20 },
+            vibrant: { saturation: 180, contrast: 110, brightness: 108, sharpness: 35, warmth: 0, vibrance: 50, shadows: 0 },
+            hdr: { saturation: 130, contrast: 125, brightness: 110, sharpness: 45, warmth: -5, vibrance: 30, shadows: 15 }
+        };
+
+        // File Upload Handling
+        const dropZone = document.getElementById('dropZone');
+        const videoInput = document.getElementById('videoInput');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('video/')) {
+                loadVideo(file);
+            }
+        });
+
+        videoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadVideo(file);
+            }
+        });
+
+        function loadVideo(file) {
+            const url = URL.createObjectURL(file);
+            
+            originalVideo.src = url;
+            enhancedVideo.src = url;
+            
+            originalVideo.onloadedmetadata = () => {
+                const duration = formatTime(originalVideo.duration);
+                const width = originalVideo.videoWidth;
+                const height = originalVideo.videoHeight;
+                document.getElementById('originalInfo').textContent = `${width}x${height} | ${duration}`;
+                
+                // Setup canvas
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Show editor
+                document.getElementById('uploadSection').classList.add('hidden');
+                document.getElementById('editorSection').classList.remove('hidden');
+                
+                updateFilters();
+            };
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Video Controls
+        document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+        function togglePlay() {
+            if (isPlaying) {
+                originalVideo.pause();
+                enhancedVideo.pause();
+                document.getElementById('playIcon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+            } else {
+                originalVideo.play();
+                enhancedVideo.play();
+                document.getElementById('playIcon').innerHTML = '<path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>';
+            }
+            isPlaying = !isPlaying;
+        }
+
+        // Sync videos
+        originalVideo.addEventListener('timeupdate', () => {
+            const progress = (originalVideo.currentTime / originalVideo.duration) * 100;
+            document.getElementById('videoProgress').value = progress;
+            document.getElementById('videoTime').textContent = 
+                `${formatTime(originalVideo.currentTime)} / ${formatTime(originalVideo.duration)}`;
+        });
+
+        document.getElementById('videoProgress').addEventListener('input', (e) => {
+            const time = (e.target.value / 100) * originalVideo.duration;
+            originalVideo.currentTime = time;
+            enhancedVideo.currentTime = time;
+        });
+
+        // Sync both videos
+        originalVideo.addEventListener('play', () => enhancedVideo.play());
+        originalVideo.addEventListener('pause', () => enhancedVideo.pause());
+        originalVideo.addEventListener('seeked', () => enhancedVideo.currentTime = originalVideo.currentTime);
+
+        // Filter Controls
+        function updateFilters() {
+            filters.saturation = parseInt(document.getElementById('saturation').value);
+            filters.contrast = parseInt(document.getElementById('contrast').value);
+            filters.brightness = parseInt(document.getElementById('brightness').value);
+            filters.sharpness = parseInt(document.getElementById('sharpness').value);
+            filters.warmth = parseInt(document.getElementById('warmth').value);
+            filters.vibrance = parseInt(document.getElementById('vibrance').value);
+            filters.shadows = parseInt(document.getElementById('shadows').value);
+
+            // Update display values
+            document.getElementById('saturationValue').textContent = filters.saturation + '%';
+            document.getElementById('contrastValue').textContent = filters.contrast + '%';
+            document.getElementById('brightnessValue').textContent = filters.brightness + '%';
+            document.getElementById('sharpnessValue').textContent = filters.sharpness + '%';
+            document.getElementById('warmthValue').textContent = filters.warmth;
+            document.getElementById('vibranceValue').textContent = filters.vibrance + '%';
+            document.getElementById('shadowsValue').textContent = filters.shadows;
+
+            // Apply CSS filters to enhanced video
+            applyVideoFilters();
+        }
+
+        function applyVideoFilters() {
+            // Calculate sepia for warmth effect
+            const warmthSepia = filters.warmth > 0 ? filters.warmth / 2 : 0;
+            const warmthHue = filters.warmth < 0 ? filters.warmth : 0;
+            
+            // Build filter string
+            let filterString = `
+                saturate(${filters.saturation}%)
+                contrast(${filters.contrast}%)
+                brightness(${filters.brightness}%)
+            `;
+            
+            // Add warmth effect
+            if (filters.warmth > 0) {
+                filterString += ` sepia(${warmthSepia}%)`;
+            } else if (filters.warmth < 0) {
+                filterString += ` hue-rotate(${warmthHue}deg)`;
+            }
+            
+            // Add sharpness simulation (using contrast boost)
+            if (filters.sharpness > 0) {
+                const sharpnessBoost = 100 + (filters.sharpness * 0.1);
+                filterString = filterString.replace(
+                    `contrast(${filters.contrast}%)`,
+                    `contrast(${filters.contrast * (sharpnessBoost / 100)}%)`
+                );
+            }
+
+            enhancedVideo.style.filter = filterString;
+        }
+
+        function applyPreset(presetName) {
+            const preset = presets[presetName];
+            
+            // Update sliders
+            document.getElementById('saturation').value = preset.saturation;
+            document.getElementById('contrast').value = preset.contrast;
+            document.getElementById('brightness').value = preset.brightness;
+            document.getElementById('sharpness').value = preset.sharpness;
+            document.getElementById('warmth').value = preset.warmth;
+            document.getElementById('vibrance').value = preset.vibrance;
+            document.getElementById('shadows').value = preset.shadows;
+            
+            // Update filters
+            updateFilters();
+            
+            // Update active state
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.preset-btn').classList.add('active');
+        }
+
+        function resetFilters() {
+            document.getElementById('saturation').value = 140;
+            document.getElementById('contrast').value = 115;
+            document.getElementById('brightness').value = 105;
+            document.getElementById('sharpness').value = 30;
+            document.getElementById('warmth').value = 0;
+            document.getElementById('vibrance').value = 20;
+            document.getElementById('shadows').value = 0;
+            
+            updateFilters();
+            
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        }
+
+        function loadNewVideo() {
+            document.getElementById('uploadSection').classList.remove('hidden');
+            document.getElementById('editorSection').classList.add('hidden');
+            originalVideo.src = '';
+            enhancedVideo.src = '';
+            videoInput.value = '';
+            resetFilters();
+        }
+
+        // Export Video with Filters
+        async function exportVideo(format = 'mp4') {
+            const exportBtn = document.getElementById('exportBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            
+            exportBtn.disabled = true;
+            progressContainer.classList.remove('hidden');
+            
+            try {
+                // Create a canvas that will apply filters
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = originalVideo.videoWidth;
+                offCanvas.height = originalVideo.videoHeight;
+                const offCtx = offCanvas.getContext('2d');
+                
+                // Get video stream from canvas
+                const canvasStream = offCanvas.captureStream(30);
+                
+                // Create a new video element for processing
+                const processVideo = document.createElement('video');
+                processVideo.src = originalVideo.src;
+                processVideo.muted = true;
+                processVideo.playsInline = true;
+                
+                // Wait for video to load
+                await new Promise((resolve) => {
+                    processVideo.onloadedmetadata = resolve;
+                    processVideo.load();
+                });
+                
+                // Try to capture audio
+                let finalStream = canvasStream;
+                try {
+                    // Create audio context and capture audio
+                    const audioContext = new AudioContext();
+                    const audioSource = audioContext.createMediaElementSource(processVideo);
+                    const audioDestination = audioContext.createMediaStreamDestination();
+                    audioSource.connect(audioDestination);
+                    audioSource.connect(audioContext.destination);
+                    
+                    // Combine video and audio streams
+                    const audioTrack = audioDestination.stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        finalStream = new MediaStream([
+                            ...canvasStream.getVideoTracks(),
+                            audioTrack
+                        ]);
+                    }
+                } catch (e) {
+                    console.log('Audio capture not available, exporting video only');
+                }
+                
+                // Setup MediaRecorder with best settings
+                const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+                    ? 'video/webm;codecs=vp9' 
+                    : 'video/webm';
+                
+                const mediaRecorder = new MediaRecorder(finalStream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 10000000 // 10 Mbps for high quality
+                });
+                
+                const chunks = [];
+                
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        chunks.push(e.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const webmBlob = new Blob(chunks, { type: 'video/webm' });
+                    
+                    if (format === 'mp4') {
+                        // Convert to MP4 using FFmpeg
+                        document.querySelector('.processing-indicator').textContent = 'جاري التحويل إلى MP4...';
+                        progressBar.style.width = '90%';
+                        progressPercent.textContent = '90%';
+                        
+                        try {
+                            const mp4Blob = await convertToMP4(webmBlob);
+                            downloadFile(mp4Blob, 'PUBG_AI_Enhanced_' + Date.now() + '.mp4');
+                        } catch (e) {
+                            console.log('MP4 conversion failed:', e);
+                            // Show conversion tip and download WebM
+                            showConversionTip(webmBlob);
+                        }
+                    } else {
+                        downloadFile(webmBlob, 'PUBG_AI_Enhanced_' + Date.now() + '.webm');
+                    }
+                    
+                    // Reset UI
+                    exportBtn.disabled = false;
+                    progressContainer.classList.add('hidden');
+                    progressBar.style.width = '0%';
+                    progressPercent.textContent = '0%';
+                    document.querySelector('.processing-indicator').textContent = 'جاري المعالجة بالذكاء الاصطناعي...';
+                    
+                    // Show success message
+                    showExportSuccess(format);
+                };
+                
+                // Start recording
+                mediaRecorder.start(100); // Collect data every 100ms
+                
+                const duration = processVideo.duration;
+                let lastUpdate = 0;
+                
+                // Real-time rendering loop
+                function renderFrame() {
+                    if (processVideo.paused || processVideo.ended) {
+                        mediaRecorder.stop();
+                        return;
+                    }
+                    
+                    // Apply filters and draw to canvas
+                    offCtx.filter = enhancedVideo.style.filter;
+                    offCtx.drawImage(processVideo, 0, 0, offCanvas.width, offCanvas.height);
+                    
+                    // Update progress (throttled)
+                    const now = Date.now();
+                    if (now - lastUpdate > 100) {
+                        const progress = (processVideo.currentTime / duration) * 100;
+                        progressBar.style.width = progress + '%';
+                        progressPercent.textContent = Math.round(progress) + '%';
+                        lastUpdate = now;
+                    }
+                    
+                    requestAnimationFrame(renderFrame);
+                }
+                
+                // Handle video end
+                processVideo.onended = () => {
+                    progressBar.style.width = '100%';
+                    progressPercent.textContent = '100%';
+                    setTimeout(() => mediaRecorder.stop(), 200);
+                };
+                
+                // Start playback and rendering
+                processVideo.currentTime = 0;
+                await processVideo.play();
+                renderFrame();
+                
+            } catch (error) {
+                console.error('Export error:', error);
+                exportBtn.disabled = false;
+                progressContainer.classList.add('hidden');
+                
+                // Show alternative method
+                showAlternativeExport();
+            }
+        }
+        
+        function showExportSuccess(format = 'mp4') {
+            const popup = document.createElement('div');
+            popup.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50';
+            popup.innerHTML = `
+                <div class="bg-gray-900 rounded-2xl p-8 text-center max-w-md mx-4 border border-cyan-500/50">
+                    <div class="text-6xl mb-4">✅</div>
+                    <h3 class="text-2xl font-bold text-white mb-2">تم التصدير بنجاح!</h3>
+                    <p class="text-gray-400 mb-4">تم حفظ الفيديو المحسّن بصيغة ${format.toUpperCase()}</p>
+                    <p class="text-cyan-400 text-sm mb-6">📁 تحقق من مجلد التنزيلات</p>
+                    <button onclick="this.closest('.fixed').remove()" class="btn-primary px-8 py-3 rounded-xl font-bold text-black">
+                        حسناً
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+        }
+        
+        function showAlternativeExport() {
+            const popup = document.createElement('div');
+            popup.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50';
+            popup.innerHTML = `
+                <div class="bg-gray-900 rounded-2xl p-8 text-center max-w-lg mx-4 border border-yellow-500/50">
+                    <div class="text-6xl mb-4">💡</div>
+                    <h3 class="text-2xl font-bold text-white mb-2">طريقة بديلة للتصدير</h3>
+                    <p class="text-gray-400 mb-4">المتصفح لا يدعم التصدير المباشر. استخدم هذه الطريقة:</p>
+                    <div class="bg-gray-800 rounded-xl p-4 text-right text-sm text-gray-300 mb-6">
+                        <p class="mb-2">1️⃣ شغّل الفيديو المحسّن</p>
+                        <p class="mb-2">2️⃣ استخدم برنامج تسجيل الشاشة (OBS أو Xbox Game Bar)</p>
+                        <p>3️⃣ سجّل الفيديو أثناء تشغيله</p>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" class="bg-gray-700 hover:bg-gray-600 px-8 py-3 rounded-xl font-bold text-white">
+                        فهمت
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+        }
+        
+        function showConversionTip(webmBlob) {
+            const popup = document.createElement('div');
+            popup.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50';
+            popup.innerHTML = `
+                <div class="bg-gray-900 rounded-2xl p-8 text-center max-w-lg mx-4 border border-yellow-500/50">
+                    <div class="text-6xl mb-4">📹</div>
+                    <h3 class="text-2xl font-bold text-white mb-2">تم التصدير بصيغة WebM</h3>
+                    <p class="text-gray-400 mb-4">لتحويله إلى MP4، استخدم أحد هذه المواقع المجانية:</p>
+                    <div class="bg-gray-800 rounded-xl p-4 text-center text-sm mb-6 space-y-2">
+                        <a href="https://cloudconvert.com/webm-to-mp4" target="_blank" class="block text-cyan-400 hover:text-cyan-300">🔗 CloudConvert.com</a>
+                        <a href="https://convertio.co/webm-mp4/" target="_blank" class="block text-cyan-400 hover:text-cyan-300">🔗 Convertio.co</a>
+                    </div>
+                    <div class="flex gap-3 justify-center">
+                        <button onclick="downloadWebM()" class="btn-primary px-6 py-3 rounded-xl font-bold text-black">
+                            تحميل WebM
+                        </button>
+                        <button onclick="this.closest('.fixed').remove()" class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-xl font-bold text-white">
+                            إغلاق
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            
+            // Store blob for download
+            window.pendingWebmBlob = webmBlob;
+        }
+        
+        function downloadWebM() {
+            if (window.pendingWebmBlob) {
+                downloadFile(window.pendingWebmBlob, 'PUBG_AI_Enhanced_' + Date.now() + '.webm');
+                document.querySelector('.fixed').remove();
+            }
+        }
+
+        // Download helper
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        
+        // Convert WebM to MP4 - Simple method using re-encoding
+        async function convertToMP4(webmBlob) {
+            // Try FFmpeg.wasm first
+            if (typeof FFmpegWASM !== 'undefined') {
+                try {
+                    const { FFmpeg } = FFmpegWASM;
+                    const ffmpeg = new FFmpeg();
+                    
+                    await ffmpeg.load({
+                        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+                    });
+                    
+                    const webmData = await webmBlob.arrayBuffer();
+                    await ffmpeg.writeFile('input.webm', new Uint8Array(webmData));
+                    
+                    await ffmpeg.exec([
+                        '-i', 'input.webm',
+                        '-c:v', 'libx264',
+                        '-preset', 'fast',
+                        '-crf', '23',
+                        '-c:a', 'aac',
+                        'output.mp4'
+                    ]);
+                    
+                    const data = await ffmpeg.readFile('output.mp4');
+                    return new Blob([data.buffer], { type: 'video/mp4' });
+                } catch (e) {
+                    console.log('FFmpeg.wasm failed:', e);
+                    throw e;
+                }
+            }
+            throw new Error('FFmpeg not available');
+        }
+
+        // Initialize
+        updateFilters();
+    </script>
+</body>
+</html>
